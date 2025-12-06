@@ -1,0 +1,13 @@
+
+表名,类型,用途,分区策略,保留期,备注
+assets,维度表,资产标的信息,无,永久,存储 GLD/SLV 等资产元数据
+price_data,超表,OHLCV 价格数据,时间+symbol,5年,自动分块和压缩
+news_articles_hyper,超表,新闻文章和情绪,时间+symbol,3年,关键词标签和情绪评分
+etf_flows,超表,ETF资金流数据,时间+symbol,10年,满足 SEC 合规要求
+etf_holders,普通表,ETF 持有者信息,无,永久,季度更新
+sentiment_metrics,超表,聚合情绪指标,时间+symbol,2年,小时/日级别汇总
+correlation_analysis,普通表,相关性分析,日期范围,永久,用于策略回测
+trading_signals,普通表,量化交易信号,无,2年,策略输出信号记录
+price_hourly,连续聚合,小时级 OHLCV,自动刷新,90天,实时预计算
+price_daily,连续聚合,日级 OHLCV,自动刷新,3年,历史数据聚合
+daily_sentiment_summary,连续聚合,日情绪汇总,自动刷新,2年,每日自动更新

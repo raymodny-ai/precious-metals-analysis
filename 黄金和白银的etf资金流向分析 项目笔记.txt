@@ -1,0 +1,444 @@
+市场价格数据  
+首选Yahoo Finance、Polygon.io、Twelve Data
+
+
+ 宏观经济数据 
+首选 FRED (Federal Reserve)、World Bank API
+
+ 新闻数据
+
+首选 marketaux、The News API、Webz.io
+
+
+ETF 资金流数据
+
+首选 FMP ETF Disclosure API、Tradefeeds ETF Holdings、ETF Action
+
+
+. 后端技术栈 (Backend Stack)
+
+推荐方案：Apache Airflow
+Airflow 配置示例（贵金属项目）
+​
+# 定义 DAG：每日金银新闻采集 + 价格更新 + ETF 流量
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime, timedelta
+
+default_args = {
+    'owner': 'quant_team',
+    'retries': 3,
+    'retry_delay': timedelta(minutes=5),
+}
+
+dag = DAG(
+    'precious_metals_daily_pipeline',
+    default_args=default_args,
+    schedule_interval='0 8 * * *',  # 每天早上 8 点
+    start_date=datetime(2025, 12, 1),
+)
+
+# 任务 1：采集新闻
+fetch_news = PythonOperator(
+    task_id='fetch_news_data',
+    python_callable=fetch_from_newsapi,
+    dag=dag,
+)
+
+# 任务 2：获取价格数据
+fetch_prices = PythonOperator(
+    task_id='fetch_gld_slv_prices',
+    python_callable=fetch_prices_from_yfinance,
+    dag=dag,
+)
+
+# 任务 3：ETF 流量数据
+fetch_etf_flows = PythonOperator(
+    task_id='fetch_etf_flows',
+    python_callable=fetch_fmp_etf_disclosure,
+    dag=dag,
+)
+
+# 任务 4：数据融合和存储
+store_data = PythonOperator(
+    task_id='store_to_database',
+    python_callable=consolidate_and_store,
+    dag=dag,
+)
+
+# 定义依赖
+[fetch_news, fetch_prices, fetch_etf_flows] >> store_data
+
+
+
+第二层：消息队列和实时处理
+
+推荐方案：Kafka + Python Streams​
+
+原因：适合贵金属新闻+价格的多源实时融合，支持消息回放（便于数据验证）
+
+架构：消息进入 Kafka → Stream Processor → 存储/API
+
+关键点：
+
+news-topic：新闻事件流
+
+price-topic：价格更新流
+
+etf-flow-topic：ETF 流量更新
+
+
+Python Kafka 使用范例：
+
+from kafka import KafkaProducer, KafkaConsumer
+import json
+from datetime import datetime
+
+# 生产者：发送新闻事件
+producer = KafkaProducer(
+    bootstrap_servers=['localhost:9092'],
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
+
+news_event = {
+    'symbol': 'GLD',
+    'title': 'Gold prices surge on inflation worries',
+    'source': 'The News API',
+    'timestamp': datetime.utcnow().isoformat(),
+    'sentiment': 0.75  # 正面
+}
+producer.send('precious-metals-news', value=news_event)
+
+# 消费者：实时监听新闻流
+consumer = KafkaConsumer(
+    'precious-metals-news',
+    bootstrap_servers=['localhost:9092'],
+    value_deserializer=lambda m: json.loads(m.decode('utf-8'))
+)
+
+for message in consumer:
+    news = message.value
+    # 联动触发：新闻情绪 + 价格影响分析
+    analyze_correlation(news)
+
+
+第三层：数据存储​
+多数据库组合方案
+推荐组合（成本最优）：
+
+
+实时数据层：
+  └─ Redis Streams (新闻/价格缓存，TTL 7 天)
+  └─ TimescaleDB (中期数据，自动分区)
+     └─ GLD/SLV 分钟级价格 (保留 1 年)
+     └─ 新闻/情绪数据 (保留 2 年)
+     └─ ETF 流量数据 (保留 3 年)
+
+高频数据层：
+  └─ InfluxDB (1 秒级 tick 数据，保留 30 天)
+     └─ GC=F / SI=F 期货 tick 行情
+
+冷存储层：
+  └─ S3 / MinIO (历史存档，成本最低)
+
+TimescaleDB vs InfluxDB 对比：​
+
+选择 TimescaleDB：需要 ACID 事务、复杂查询、备份恢复
+
+选择 InfluxDB：只关心写入速度、不需要事务、内存受限
+
+PostgreSQL 初始化（TimescaleDB 扩展）：
+
+-- 启用 TimescaleDB 扩展
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+
+-- 创建 gold 价格表
+CREATE TABLE gld_prices (
+    time TIMESTAMPTZ NOT NULL,
+    symbol TEXT NOT NULL,
+    price FLOAT8,
+    volume FLOAT8,
+    open FLOAT8,
+    high FLOAT8,
+    low FLOAT8
+);
+
+-- 转换为超表（自动分区）
+SELECT create_hypertable('gld_prices', 'time', if_not_exists => TRUE);
+
+-- 创建索引
+CREATE INDEX ON gld_prices (symbol, time DESC);
+
+第四层：API 服务层​
+FastAPI 推荐​
+为什么选择 FastAPI：
+
+异步原生，支持 WebSocket 实时推送​
+
+自动 OpenAPI 文档生成
+
+性能接近 Go 和 Rust
+
+完美集成 Pydantic（数据验证）和 SQLAlchemy
+
+核心 API 端点：
+
+from fastapi import FastAPI, WebSocket, Depends
+from sqlalchemy.orm import Session
+import asyncio
+
+app = FastAPI(title="Precious Metals API")
+
+# 1. 实时行情 WebSocket
+@app.websocket("/ws/prices/{symbol}")
+async def websocket_prices(websocket: WebSocket, symbol: str):
+    await websocket.accept()
+    while True:
+        # 从 Redis 读取最新价格，推送给客户端
+        price_data = await get_latest_price(symbol)
+        await websocket.send_json(price_data)
+        await asyncio.sleep(1)
+
+# 2. 新闻事件流
+@app.get("/api/news")
+async def get_news(
+    symbol: str,  # GLD 或 SLV
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    return db.query(NewsArticle)\
+        .filter(NewsArticle.symbol == symbol)\
+        .order_by(NewsArticle.timestamp.desc())\
+        .limit(limit)\
+        .all()
+
+# 3. ETF 资金流
+@app.get("/api/etf-flows/{etf_symbol}")
+async def get_etf_flows(etf_symbol: str, db: Session = Depends(get_db)):
+    return {
+        "etf": etf_symbol,
+        "inflows_24h": get_daily_inflows(etf_symbol),
+        "aum_change": get_aum_change(etf_symbol),
+        "top_holders": get_top_holders(etf_symbol)
+    }
+
+# 4. 综合分析端点
+@app.get("/api/sentiment-momentum/{symbol}")
+async def get_sentiment_momentum(symbol: str, days: int = 30):
+    news_sentiment = await analyze_news_sentiment(symbol, days)
+    price_momentum = await get_price_momentum(symbol, days)
+    etf_flow = await get_etf_flow_momentum(symbol, days)
+    
+    return {
+        "symbol": symbol,
+        "news_sentiment_score": news_sentiment,
+        "price_momentum": price_momentum,
+        "etf_flow_indicator": etf_flow,
+        "composite_signal": aggregate_signals(...)
+    }
+
+第五层：缓存层 (Redis)​
+Redis 在贵金属项目中的应用：
+Redis 使用范例：
+
+import redis
+import json
+
+r = redis.Redis(host='localhost', port=6379, decode_responses=True)
+
+# 1. 缓存最新价格（Write-Behind 模式）
+def cache_latest_price(symbol, price_data):
+    # 写入 Redis
+    r.hset(f"price:{symbol}", mapping=price_data)
+    r.expire(f"price:{symbol}", 60)  # 1 分钟过期
+    
+    # 异步写入 PostgreSQL（通过 Kafka）
+    producer.send('price-updates', value=price_data)
+
+# 2. Redis Stream 存储新闻事件（保留 7 天历史）
+def stream_news_event(news):
+    r.xadd(
+        f"news:stream:{news['symbol']}", 
+        {'data': json.dumps(news), 'timestamp': news['timestamp']},
+        maxlen=1000000  # 自动截断
+    )
+
+# 3. 消费 Stream（用于实时 WebSocket 推送）
+def consume_news_stream(symbol):
+    for msg in r.xread({f"news:stream:{symbol}": '0'}, count=50):
+        yield json.loads(msg[1]['data'])
+
+第六层：监控和日志​
+Prometheus + Grafana​
+关键指标（贵金属项目）：
+
+
+from prometheus_client import Counter, Gauge, Histogram
+import time
+
+# 1. API 请求计数
+api_requests = Counter(
+    'api_requests_total',
+    'Total API requests',
+    ['endpoint', 'method', 'status']
+)
+
+# 2. 数据获取延迟
+fetch_latency = Histogram(
+    'data_fetch_seconds',
+    'Data fetch latency',
+    ['source'],  # newsapi, metalpriceapi, yfinance
+    buckets=(0.1, 0.5, 1.0, 2.0, 5.0)
+)
+
+# 3. ETF 流量指标
+etf_inflow_gauge = Gauge(
+    'etf_inflow_usd',
+    'ETF inflow amount',
+    ['symbol']  # GLD, SLV
+)
+
+# 4. 数据库查询时间
+db_query_time = Histogram(
+    'db_query_seconds',
+    'Database query time',
+    ['query_type'],
+    buckets=(0.01, 0.1, 0.5, 1.0)
+)
+
+# 使用示例
+@app.get("/api/prices/{symbol}")
+def get_prices(symbol: str):
+    start = time.time()
+    with db_query_time.labels(query_type='price_fetch').time():
+        prices = db.query(Price).filter(Price.symbol == symbol).all()
+    api_requests.labels(endpoint='/prices', method='GET', status=200).inc()
+    return prices
+
+
+Prometheus 配置（prometheus.yml）：
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'precious-metals-api'
+    static_configs:
+      - targets: ['localhost:8000']
+
+ELK Stack 用于应用日志
+# Docker Compose 启动 ELK
+version: '3'
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.0.0
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "9200:9200"
+  
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.0.0
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    ports:
+      - "5000:5000"
+  
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.0.0
+    ports:
+      - "5601:5601"
+
+Python 日志配置：
+from pythonjsonlogger import jsonlogger
+import logging
+
+logger = logging.getLogger()
+handler = logging.StreamHandler()
+formatter = jsonlogger.JsonFormatter()
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+# 日志自动推送到 Logstash
+logger.info("Gold price update", extra={
+    "symbol": "GLD",
+    "price": 200.5,
+    "source": "yfinance"
+})
+
+
+ 数据库 (Database)
+严格按照根目录下 database_guide.md执行，sql部分的代码按照precious_metals_schema.sql严格执行
+
+
+2.3 任务调度 (Task Scheduling)
+ Dramatiq + Redis
+
+如果您主要是为了配合 FastAPI 做后台任务处理，选 Dramatiq。它比 Celery 稳定得多，配置也简单。
+
+
+前端技术栈 (Frontend Stack)
+3.1 框架 React + Next.js
+
+3.2 图表库
+ 	TradingView + ECharts
+
+
+
+4.1 NLP 模型 (情绪分析) 机器学习与 NLP (ML & NLP)严格按照根目录文件名为：FinBERT_DeepSeek_Kimi2.md 执行
+
+
+4.2 预测模型
+本地模型 + 在线 LLM 混合架构
+
+数据输入
+  ↓
+特征工程（FinBERT + DeepSeek 情感）
+  ↓
+多模型预测：
+  ├─ TabNet：回归预测 
+  ├─ LSTM+Attention：序列模式
+  └─ XGBoost：基准参考
+  ↓
+集成与不确定性量化：
+  ├─ 加权平均 → 点预测
+  ├─ 自助法 → 置信区间 [5%, 95%]
+  └─ 异常检测 → 风险告警
+  ↓
+LLM 解释（DeepSeek）：
+  ├─ 为什么这个价格方向？
+  ├─ 最重要驱动因素？
+  └─ 有什么风险？
+  ↓
+交易信号 + 风险管理
+
+
+
+
+模型的参数优化完整指南
+严格按照Model_Hyperparameter_Optimization.md 进行参数优化完
+
+
+
+添加回测系统完整架构，架构严格按照 Backtesting_Framework_Architecture.md 进行开发
+
+
+
+
+
+
+
+贵金属相关新闻应该利用在线llm获取，然后本地和在线llm同时分析
+
+
+
+
+
+
+
+
+
+
+
+
+
+
