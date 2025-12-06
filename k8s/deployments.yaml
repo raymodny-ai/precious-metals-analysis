@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: precious-metals-api
+  namespace: precious-metals
+  labels:
+    app: precious-metals
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: precious-metals
+      component: api
+  template:
+    metadata:
+      labels:
+        app: precious-metals
+        component: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8001"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: api
+          image: precious-metals/api:latest
+          ports:
+            - containerPort: 8000
+              name: http
+            - containerPort: 8001
+              name: metrics
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: precious-metals-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: precious-metals-secrets
+                  key: redis-url
+            - name: DEEPSEEK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: precious-metals-secrets
+                  key: deepseek-api-key
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: precious-metals-secrets
+                  key: jwt-secret
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: precious-metals-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: precious-metals-worker
+  namespace: precious-metals
+  labels:
+    app: precious-metals
+    component: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: precious-metals
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: precious-metals
+        component: worker
+    spec:
+      containers:
+        - name: worker
+          image: precious-metals/worker:latest
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: precious-metals-secrets
+                  key: database-url
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: precious-metals-config
+                  key: kafka-servers
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: precious-metals-frontend
+  namespace: precious-metals
+  labels:
+    app: precious-metals
+    component: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: precious-metals
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: precious-metals
+        component: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: precious-metals/frontend:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NEXT_PUBLIC_API_URL
+              value: "http://precious-metals-api:8000"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

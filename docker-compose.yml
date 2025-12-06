@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # PostgreSQL + TimescaleDB
+  db:
+    image: timescale/timescaledb:latest-pg15
+    container_name: precious_metals_db
+    environment:
+      POSTGRES_USER: ${DB_USER:-precious_metals}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_password}
+      POSTGRES_DB: ${DB_NAME:-precious_metals}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_database.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-precious_metals}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: precious_metals_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: precious_metals_api
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-precious_metals}:${DB_PASSWORD:-secure_password}@db:5432/${DB_NAME:-precious_metals}
+      REDIS_URL: redis://redis:6379/0
+      FRED_API_KEY: ${FRED_API_KEY:-}
+      NEWS_API_KEY: ${NEWS_API_KEY:-}
+      FMP_API_KEY: ${FMP_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+  # Frontend (production build)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: precious_metals_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:8000
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+
+networks:
+  default:
+    name: precious_metals_network
