@@ -1,0 +1,164 @@
+{
+    "en": {
+        "app_title": "PreciousInsight",
+        "app_subtitle": "Real-time Precious Metals Market Intelligence",
+        "navigation": {
+            "dashboard": "Dashboard",
+            "news_analysis": "News Analysis",
+            "trend_forecast": "Trend Forecast",
+            "reports": "Reports"
+        },
+        "metrics": {
+            "gold_price": "Gold Price",
+            "silver_price": "Silver Price",
+            "platinum_price": "Platinum Price",
+            "palladium_price": "Palladium Price"
+        },
+        "sections": {
+            "price_trends": "Price Trends",
+            "latest_news": "Latest News",
+            "technical_indicators": "Technical Indicators",
+            "market_sentiment": "Market Sentiment"
+        },
+        "indicators": {
+            "rsi": "RSI (Relative Strength Index)",
+            "macd": "MACD",
+            "bollinger_bands": "Bollinger Bands",
+            "fibonacci": "Fibonacci Levels",
+            "sma": "Simple Moving Average",
+            "ema": "Exponential Moving Average"
+        },
+        "signals": {
+            "overbought": "Overbought",
+            "oversold": "Oversold",
+            "neutral": "Neutral",
+            "bullish": "Bullish",
+            "bearish": "Bearish"
+        },
+        "sentiment": {
+            "positive": "Positive",
+            "negative": "Negative",
+            "neutral": "Neutral"
+        },
+        "buttons": {
+            "generate_report": "Generate Report",
+            "refresh": "Refresh",
+            "export": "Export",
+            "settings": "Settings"
+        },
+        "messages": {
+            "loading": "Loading...",
+            "no_data": "No data available",
+            "error": "An error occurred",
+            "success": "Operation successful"
+        }
+    },
+    "zh": {
+        "app_title": "PreciousInsight",
+        "app_subtitle": "实时贵金属市场智能分析",
+        "navigation": {
+            "dashboard": "仪表盘",
+            "news_analysis": "新闻分析",
+            "trend_forecast": "趋势预测",
+            "reports": "报告"
+        },
+        "metrics": {
+            "gold_price": "黄金价格",
+            "silver_price": "白银价格",
+            "platinum_price": "铂金价格",
+            "palladium_price": "钯金价格"
+        },
+        "sections": {
+            "price_trends": "价格趋势",
+            "latest_news": "最新新闻",
+            "technical_indicators": "技术指标",
+            "market_sentiment": "市场情绪"
+        },
+        "indicators": {
+            "rsi": "RSI (相对强弱指标)",
+            "macd": "MACD (指数平滑异同移动平均线)",
+            "bollinger_bands": "布林带",
+            "fibonacci": "斐波那契水平",
+            "sma": "简单移动平均",
+            "ema": "指数移动平均"
+        },
+        "signals": {
+            "overbought": "超买",
+            "oversold": "超卖",
+            "neutral": "中性",
+            "bullish": "看涨",
+            "bearish": "看跌"
+        },
+        "sentiment": {
+            "positive": "正面",
+            "negative": "负面",
+            "neutral": "中性"
+        },
+        "buttons": {
+            "generate_report": "生成报告",
+            "refresh": "刷新",
+            "export": "导出",
+            "settings": "设置"
+        },
+        "messages": {
+            "loading": "加载中...",
+            "no_data": "暂无数据",
+            "error": "发生错误",
+            "success": "操作成功"
+        }
+    },
+    "es": {
+        "app_title": "PreciousInsight",
+        "app_subtitle": "Análisis Inteligente del Mercado de Metales Preciosos en Tiempo Real",
+        "navigation": {
+            "dashboard": "Panel de Control",
+            "news_analysis": "Análisis de Noticias",
+            "trend_forecast": "Pronóstico de Tendencias",
+            "reports": "Informes"
+        },
+        "metrics": {
+            "gold_price": "Precio del Oro",
+            "silver_price": "Precio de la Plata",
+            "platinum_price": "Precio del Platino",
+            "palladium_price": "Precio del Paladio"
+        },
+        "sections": {
+            "price_trends": "Tendencias de Precios",
+            "latest_news": "Últimas Noticias",
+            "technical_indicators": "Indicadores Técnicos",
+            "market_sentiment": "Sentimiento del Mercado"
+        },
+        "indicators": {
+            "rsi": "RSI (Índice de Fuerza Relativa)",
+            "macd": "MACD",
+            "bollinger_bands": "Bandas de Bollinger",
+            "fibonacci": "Niveles de Fibonacci",
+            "sma": "Media Móvil Simple",
+            "ema": "Media Móvil Exponencial"
+        },
+        "signals": {
+            "overbought": "Sobrecomprado",
+            "oversold": "Sobrevendido",
+            "neutral": "Neutral",
+            "bullish": "Alcista",
+            "bearish": "Bajista"
+        },
+        "sentiment": {
+            "positive": "Positivo",
+            "negative": "Negativo",
+            "neutral": "Neutral"
+        },
+        "buttons": {
+            "generate_report": "Generar Informe",
+            "refresh": "Actualizar",
+            "export": "Exportar",
+            "settings": "Configuración"
+        },
+        "messages": {
+            "loading": "Cargando...",
+            "no_data": "No hay datos disponibles",
+            "error": "Ocurrió un error",
+            "success": "Operación exitosa"
+        }
+    }
+}

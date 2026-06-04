@@ -1,0 +1,46 @@
+{
+  "mcpServers": {
+    "financial-datasets": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-financial-datasets"],
+      "env": {
+        "FINANCIAL_DATASETS_API_KEY": "your_key_here"
+      }
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": {
+        "BRAVE_API_KEY": "your_key_here"
+      }
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "f:\\Financial Project\\TrendRadar  BettaFish\\PreciousInsight\\reports",
+        "f:\\Financial Project\\TrendRadar  BettaFish\\PreciousInsight\\logs"
+      ]
+    },
+    "precious-metals-price": {
+      "command": "python",
+      "args": ["f:\\Financial Project\\TrendRadar  BettaFish\\PreciousInsight\\MCPServers\\precious_metals_price\\server.py"],
+      "env": {
+        "METALS_API_KEY": "your_key_here"
+      }
+    },
+    "sentiment-analysis": {
+      "command": "python",
+      "args": ["f:\\Financial Project\\TrendRadar  BettaFish\\PreciousInsight\\MCPServers\\sentiment_analysis\\server.py"]
+    },
+    "database-query": {
+      "command": "python",
+      "args": ["f:\\Financial Project\\TrendRadar  BettaFish\\PreciousInsight\\MCPServers\\database_query\\server.py"]
+    }
+  }
+}

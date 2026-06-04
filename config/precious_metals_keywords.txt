@@ -1,0 +1,38 @@
+# 核心贵金属词
+gold
+silver
+platinum
+palladium
+
+# 必须词 - 价格相关
++price
++rally
++surge
++plunge
++forecast
+
+# 必须词 - 市场相关
++Federal Reserve
++inflation
++interest rate
++dollar index
+
+# 过滤词 - 排除干扰
+!jewelry store
+!wedding ring
+!game item
+!Pokemon
+
+# 矿业公司组
+Newmont
+Barrick Gold
+Kinross Gold
++earnings
++production
+
+# ETF组
+GLD
+SLV
+PSLV
++volume
++holdings
